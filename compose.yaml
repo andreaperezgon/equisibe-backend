@@ -1,10 +1,16 @@
 services:
   mysql:
-    image: 'mysql:latest'
+    image: mysql:8.4
+    container_name: equisibe-mysql
     environment:
-      - 'MYSQL_DATABASE=mydatabase'
-      - 'MYSQL_PASSWORD=secret'
-      - 'MYSQL_ROOT_PASSWORD=verysecret'
-      - 'MYSQL_USER=myuser'
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: equisibe
+      MYSQL_USER: equisibe
+      MYSQL_PASSWORD: equisibe
     ports:
-      - '3306'
+      - "3306:3306"
+    volumes:
+      - equisibe_mysql_data:/var/lib/mysql
+
+volumes:
+  equisibe_mysql_data:
