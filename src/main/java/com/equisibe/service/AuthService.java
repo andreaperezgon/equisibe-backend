@@ -9,8 +9,6 @@ import java.util.Locale;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import java.security.Principal;
-import org.springframework.web.bind.annotation.GetMapping;
 
 @Service
 public class AuthService {
@@ -57,8 +55,4 @@ public class AuthService {
                 user.getRole()
         );
     }
-    @GetMapping("/me")
-public UserResponse me(Principal principal) {
-    return authService.getCurrentUser(principal.getName());
-}
 }
