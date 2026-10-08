@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
 
 @CrossOrigin(
         origins = "http://localhost:5173",
@@ -56,30 +57,33 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(user);
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<Void> login(
-            @Valid @RequestBody LoginRequest credentials,
-            HttpServletRequest request,
-            HttpServletResponse response) {
+   @PostMapping("/login")
+public ResponseEntity<Void> login(
+        @Valid @RequestBody LoginRequest credentials,
+        HttpServletRequest request,
+        HttpServletResponse response) {
 
-        var token = UsernamePasswordAuthenticationToken.unauthenticated(
-                credentials.email().trim().toLowerCase(Locale.ROOT),
-                credentials.password()
-        );
+    var token = UsernamePasswordAuthenticationToken.unauthenticated(
+            credentials.email().trim().toLowerCase(Locale.ROOT),
+            credentials.password()
+    );
 
-        var authentication = authenticationManager.authenticate(token);
+    var authentication = authenticationManager.authenticate(token);
 
-        if (request.getSession(false) != null) {
-            request.changeSessionId();
-        }
-
-        var context = SecurityContextHolder.createEmptyContext();
-        context.setAuthentication(authentication);
-        SecurityContextHolder.setContext(context);
-        securityContextRepository.saveContext(context, request, response);
-
-        return ResponseEntity.noContent().build();
+    if (request.getSession(false) != null) {
+        request.changeSessionId();
     }
+
+    var csrfTokenRepository = new HttpSessionCsrfTokenRepository();
+    csrfTokenRepository.saveToken(null, request, response);
+
+    var context = SecurityContextHolder.createEmptyContext();
+    context.setAuthentication(authentication);
+    SecurityContextHolder.setContext(context);
+    securityContextRepository.saveContext(context, request, response);
+
+    return ResponseEntity.noContent().build();
+}
 
     @GetMapping("/me")
     public UserResponse me(Principal principal) {
