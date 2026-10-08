@@ -20,8 +20,10 @@ import java.util.Locale;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-@CrossOrigin(origins = "http://localhost:5173")
-@RestController
+@CrossOrigin(
+        origins = "http://localhost:5173",
+        allowCredentials = "true"
+)@RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
