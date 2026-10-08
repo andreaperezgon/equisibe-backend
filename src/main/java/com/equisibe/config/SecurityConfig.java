@@ -8,6 +8,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
 
 @Configuration
 public class SecurityConfig {
@@ -34,5 +36,9 @@ public class SecurityConfig {
 public AuthenticationManager authenticationManager(
         AuthenticationConfiguration configuration) throws Exception {
     return configuration.getAuthenticationManager();
+}
+@Bean
+public SecurityContextRepository securityContextRepository() {
+    return new HttpSessionSecurityContextRepository();
 }
 }
