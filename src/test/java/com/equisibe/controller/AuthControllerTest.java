@@ -30,7 +30,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 @ExtendWith(MockitoExtension.class)
 class AuthControllerTest {
 
@@ -176,4 +176,21 @@ class AuthControllerTest {
 
         assertSame(authentication, context.getValue().getAuthentication());
     }
+    @Test
+void shouldReturnCurrentUserWithoutPassword() throws Exception {
+    var user = new UserResponse(
+            1L, "Andrea", "andrea@example.com", Role.CUSTOMER
+    );
+
+    when(authService.getCurrentUser("andrea@example.com"))
+            .thenReturn(user);
+
+    mockMvc.perform(get("/api/auth/me")
+            .principal(() -> "andrea@example.com"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(1))
+            .andExpect(jsonPath("$.email").value("andrea@example.com"))
+            .andExpect(jsonPath("$.role").value("CUSTOMER"))
+            .andExpect(jsonPath("$.password").doesNotExist());
+}
 }

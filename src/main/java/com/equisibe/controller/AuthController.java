@@ -19,6 +19,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.util.Locale;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import java.security.Principal;
+import org.springframework.web.bind.annotation.GetMapping;
 
 @CrossOrigin(
         origins = "http://localhost:5173",
@@ -70,4 +72,8 @@ public ResponseEntity<Void> login(
 
     return ResponseEntity.noContent().build();
 }  
+@GetMapping("/me")
+public UserResponse me(Principal principal) {
+    return authService.getCurrentUser(principal.getName());
+}
 }
