@@ -13,6 +13,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.equisibe.dto.LoginRequest;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.util.Locale;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @CrossOrigin(origins = "http://localhost:5173")
 @RestController
@@ -38,4 +44,28 @@ public class AuthController {
         UserResponse user = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(user);
     }
+  @PostMapping("/login")
+public ResponseEntity<Void> login(
+        @Valid @RequestBody LoginRequest credentials,
+        HttpServletRequest request,
+        HttpServletResponse response) {
+
+    var token = UsernamePasswordAuthenticationToken.unauthenticated(
+            credentials.email().trim().toLowerCase(Locale.ROOT),
+            credentials.password()
+    );
+
+    var authentication = authenticationManager.authenticate(token);
+
+    if (request.getSession(false) != null) {
+        request.changeSessionId();
+    }
+
+    var context = SecurityContextHolder.createEmptyContext();
+    context.setAuthentication(authentication);
+    SecurityContextHolder.setContext(context);
+    securityContextRepository.saveContext(context, request, response);
+
+    return ResponseEntity.noContent().build();
+}  
 }

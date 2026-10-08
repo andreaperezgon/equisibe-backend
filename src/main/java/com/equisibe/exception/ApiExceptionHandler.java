@@ -4,7 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
+import org.springframework.security.core.AuthenticationException;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
@@ -15,4 +15,12 @@ public class ApiExceptionHandler {
                 exception.getMessage()
         );
     }
+    @ExceptionHandler(AuthenticationException.class)
+public ProblemDetail handleAuthenticationException(
+        AuthenticationException exception) {
+    return ProblemDetail.forStatusAndDetail(
+            HttpStatus.UNAUTHORIZED,
+            "Correo o contraseña incorrectos."
+    );
+}
 }

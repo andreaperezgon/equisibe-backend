@@ -19,7 +19,11 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-        .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
+.requestMatchers(
+        HttpMethod.POST,
+        "/api/auth/register",
+        "/api/auth/login"
+).permitAll()
         .requestMatchers("/api/contacts/**", "/error").permitAll()
         .anyRequest().authenticated()
 );

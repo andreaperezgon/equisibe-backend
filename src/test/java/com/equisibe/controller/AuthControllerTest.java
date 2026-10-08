@@ -5,18 +5,27 @@ import com.equisibe.exception.ApiExceptionHandler;
 import com.equisibe.exception.EmailAlreadyExistsException;
 import com.equisibe.model.Role;
 import com.equisibe.service.AuthService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -38,6 +47,8 @@ class AuthControllerTest {
 
     @BeforeEach
     void setUp() {
+        SecurityContextHolder.clearContext();
+
         var controller = new AuthController(
                 authService,
                 authenticationManager,
@@ -48,6 +59,11 @@ class AuthControllerTest {
                 .standaloneSetup(controller)
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -106,5 +122,58 @@ class AuthControllerTest {
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(authService);
+    }
+
+    @Test
+    void shouldRejectInvalidCredentials() throws Exception {
+        when(authenticationManager.authenticate(any()))
+                .thenThrow(new BadCredentialsException("Invalid credentials"));
+
+        mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "email": "andrea@example.com",
+                          "password": "WrongPassword123"
+                        }
+                        """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.detail")
+                        .value("Correo o contraseña incorrectos."));
+
+        verifyNoInteractions(securityContextRepository);
+    }
+
+    @Test
+    void shouldAuthenticateAndSaveSession() throws Exception {
+        var principal = User.withUsername("andrea@example.com")
+                .password("password-hash")
+                .roles("CUSTOMER")
+                .build();
+
+        var authentication =
+                UsernamePasswordAuthenticationToken.authenticated(
+                        principal, null, principal.getAuthorities()
+                );
+
+        when(authenticationManager.authenticate(any()))
+                .thenReturn(authentication);
+
+        mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "email": "andrea@example.com",
+                          "password": "ExamplePassword123"
+                        }
+                        """))
+                .andExpect(status().isNoContent());
+
+        var context = ArgumentCaptor.forClass(SecurityContext.class);
+
+        verify(securityContextRepository)
+                .saveContext(context.capture(), any(), any());
+
+        assertSame(authentication, context.getValue().getAuthentication());
     }
 }
