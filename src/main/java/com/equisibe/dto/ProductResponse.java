@@ -1,6 +1,8 @@
 package com.equisibe.dto;
 
+import com.equisibe.model.ClothingSize;
 import java.math.BigDecimal;
+import java.util.Map;
 
 public record ProductResponse(
         Long id,
@@ -8,6 +10,7 @@ public record ProductResponse(
         String description,
         BigDecimal price,
         String imageUrl,
-        String category
+        String category,
+        Map<ClothingSize, Integer> stockBySize
 ) {
 }

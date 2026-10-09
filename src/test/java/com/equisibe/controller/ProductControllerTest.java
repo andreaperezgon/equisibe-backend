@@ -1,9 +1,11 @@
 package com.equisibe.controller;
 
 import com.equisibe.dto.ProductResponse;
+import com.equisibe.model.ClothingSize;
 import com.equisibe.service.ProductService;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,10 +36,9 @@ class ProductControllerTest {
     }
 
     @Test
-    void shouldReturnProductCatalog() throws Exception {
-        when(productService.getProducts()).thenReturn(
-                List.of(sampleProduct())
-        );
+    void shouldReturnProductCatalogWithSizeStock() throws Exception {
+        when(productService.getProducts())
+                .thenReturn(List.of(sampleProduct()));
 
         mockMvc.perform(get("/api/products"))
                 .andExpect(status().isOk())
@@ -45,7 +46,11 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$[0].id").value(1))
                 .andExpect(jsonPath("$[0].name").value("Camisa blanca"))
                 .andExpect(jsonPath("$[0].price").value(49.90))
-                .andExpect(jsonPath("$[0].category").value("Camisas"));
+                .andExpect(jsonPath("$[0].category").value("Camisas"))
+                .andExpect(jsonPath("$[0].stockBySize.S").value(3))
+                .andExpect(jsonPath("$[0].stockBySize.M").value(0))
+                .andExpect(jsonPath("$[0].stockBySize.L").value(2))
+                .andExpect(jsonPath("$[0].stockBySize.XL").value(0));
 
         verify(productService).getProducts();
     }
@@ -60,7 +65,7 @@ class ProductControllerTest {
     }
 
     @Test
-    void shouldReturnProductDetails() throws Exception {
+    void shouldReturnProductDetailsWithSizeStock() throws Exception {
         when(productService.getProduct(1L)).thenReturn(sampleProduct());
 
         mockMvc.perform(get("/api/products/1"))
@@ -70,7 +75,11 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.description")
                         .value("Camisa de algodón."))
                 .andExpect(jsonPath("$.imageUrl")
-                        .value("/images/white-shirt.jpg"));
+                        .value("/images/white-shirt.jpg"))
+                .andExpect(jsonPath("$.stockBySize.S").value(3))
+                .andExpect(jsonPath("$.stockBySize.M").value(0))
+                .andExpect(jsonPath("$.stockBySize.L").value(2))
+                .andExpect(jsonPath("$.stockBySize.XL").value(0));
 
         verify(productService).getProduct(1L);
     }
@@ -102,7 +111,13 @@ class ProductControllerTest {
                 "Camisa de algodón.",
                 new BigDecimal("49.90"),
                 "/images/white-shirt.jpg",
-                "Camisas"
+                "Camisas",
+                Map.of(
+                        ClothingSize.S, 3,
+                        ClothingSize.M, 0,
+                        ClothingSize.L, 2,
+                        ClothingSize.XL, 0
+                )
         );
     }
 }

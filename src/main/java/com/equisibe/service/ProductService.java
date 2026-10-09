@@ -43,7 +43,8 @@ public class ProductService {
                 product.getDescription(),
                 product.getPrice(),
                 product.getImageUrl(),
-                product.getCategory()
+                product.getCategory(),
+                product.getStockBySize()
         );
     }
 }
