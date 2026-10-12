@@ -22,15 +22,19 @@ import org.springframework.transaction.annotation.Transactional;
 public class CartValidationService {
 
     private final ProductRepository productRepository;
+    private final ShippingCostService shippingCostService;
 
-    public CartValidationService(ProductRepository productRepository) {
+    public CartValidationService(
+            ProductRepository productRepository,
+            ShippingCostService shippingCostService) {
+
         this.productRepository = productRepository;
+        this.shippingCostService = shippingCostService;
     }
 
     public CartValidationResponse validate(CartValidationRequest request) {
         Map<LineKey, Long> quantities = new LinkedHashMap<>();
 
-        // Sumar las cantidades si se repiten el producto y la talla.
         for (var item : request.items()) {
             var key = new LineKey(item.productId(), item.size());
 
@@ -93,7 +97,6 @@ public class CartValidationService {
                 continue;
             }
 
-            // Utilizar siempre el precio guardado en la base de datos.
             var lineTotal = product.getPrice()
                     .multiply(BigDecimal.valueOf(quantity));
 
@@ -111,11 +114,21 @@ public class CartValidationService {
 
         boolean valid = issues.isEmpty();
 
+        BigDecimal shippingCost = valid
+                ? shippingCostService.calculate(subtotal)
+                : null;
+
+        BigDecimal total = valid
+                ? subtotal.add(shippingCost)
+                : null;
+
         return new CartValidationResponse(
                 valid,
                 List.copyOf(items),
                 List.copyOf(issues),
                 valid ? subtotal : null,
+                shippingCost,
+                total,
                 "EUR"
         );
     }

@@ -10,6 +10,8 @@ public record CartValidationResponse(
         List<Item> items,
         List<Issue> issues,
         BigDecimal subtotal,
+        BigDecimal shippingCost,
+        BigDecimal total,
         String currency
 ) {
 
