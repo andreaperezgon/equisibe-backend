@@ -2,6 +2,7 @@ package com.equisibe.service;
 
 import com.equisibe.dto.CheckoutRequest;
 import com.equisibe.dto.CheckoutResponse;
+import com.equisibe.dto.OrderResponse;
 import com.equisibe.dto.ShippingAddressResponse;
 import com.equisibe.model.Order;
 import com.equisibe.model.OrderItem;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
+@Transactional(readOnly = true)
 public class OrderService {
 
     private final OrderRepository orderRepository;
@@ -70,6 +72,26 @@ public class OrderService {
         );
 
         return orderRepository.save(order).getId();
+    }
+
+    public OrderResponse getOrder(String email, Long orderId) {
+        User user = getActiveUser(email);
+
+        if (orderId == null || orderId <= 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "El identificador del pedido no es válido."
+            );
+        }
+
+        Order order = orderRepository
+                .findByIdAndUser_Id(orderId, user.getId())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "El pedido no está disponible."
+                ));
+
+        return OrderResponse.from(order);
     }
 
     private User getActiveUser(String email) {
