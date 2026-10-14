@@ -31,9 +31,11 @@ import static org.mockito.Mockito.*;
 class StripeCheckoutServiceTest {
 
     private static final String EMAIL = "cliente@example.com";
+    private static final String IDEMPOTENCY_KEY = "checkout-test-key";
+    private static final long SESSION_EXPIRES_AT = 1791892800L;
 
     @Mock
-    private OrderService orderService;
+    private OrderPaymentService orderPaymentService;
 
     @Mock
     private ObjectProvider<StripeClient> clientProvider;
@@ -46,7 +48,7 @@ class StripeCheckoutServiceTest {
     @BeforeEach
     void setUp() {
         service = new StripeCheckoutService(
-                orderService,
+                orderPaymentService,
                 clientProvider,
                 "http://localhost:5173"
         );
@@ -62,11 +64,13 @@ class StripeCheckoutServiceTest {
             String shipping,
             long shippingCents) throws Exception {
 
-        when(orderService.getOrder(EMAIL, 42L))
-                .thenReturn(order(
-                        OrderStatus.PENDING_PAYMENT,
-                        quantity,
-                        shipping
+        when(orderPaymentService.prepare(EMAIL, 42L))
+                .thenReturn(new OrderPaymentService.PreparedPayment(
+                        order(OrderStatus.PENDING_PAYMENT, quantity, shipping),
+                        IDEMPOTENCY_KEY,
+                        null,
+                        null,
+                        Instant.parse("2026-10-13T10:00:00Z")
                 ));
 
         when(clientProvider.getObject()).thenReturn(client);
@@ -74,6 +78,7 @@ class StripeCheckoutServiceTest {
         Session session = mock(Session.class);
         when(session.getStatus()).thenReturn("open");
         when(session.getId()).thenReturn("cs_test_example");
+        when(session.getExpiresAt()).thenReturn(SESSION_EXPIRES_AT);
         when(session.getUrl())
                 .thenReturn("https://checkout.stripe.com/example");
 
@@ -137,7 +142,7 @@ class StripeCheckoutServiceTest {
                 params.getCancelUrl()
         );
         assertEquals(
-                "checkout-42-2026-10-13T10:00:00Z",
+                IDEMPOTENCY_KEY,
                 optionsCaptor.getValue().getIdempotencyKey()
         );
 
@@ -146,12 +151,22 @@ class StripeCheckoutServiceTest {
                 "https://checkout.stripe.com/example",
                 response.url()
         );
+
+        verify(orderPaymentService).attachSession(
+                EMAIL,
+                42L,
+                "cs_test_example",
+                Instant.ofEpochSecond(SESSION_EXPIRES_AT)
+        );
     }
 
     @Test
     void rejectsAlreadyPaidOrder() {
-        when(orderService.getOrder(EMAIL, 42L))
-                .thenReturn(order(OrderStatus.PAID, 1L, "3.95"));
+        when(orderPaymentService.prepare(EMAIL, 42L))
+                .thenThrow(new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "El pedido no está pendiente de pago."
+                ));
 
         var error = assertThrows(
                 ResponseStatusException.class,
@@ -160,11 +175,14 @@ class StripeCheckoutServiceTest {
 
         assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
         verifyNoInteractions(clientProvider, client);
+        verify(orderPaymentService, never()).attachSession(
+                any(), any(), any(), any()
+        );
     }
 
     @Test
     void doesNotContactStripeWhenOrderIsNotAccessible() {
-        when(orderService.getOrder(EMAIL, 42L))
+        when(orderPaymentService.prepare(EMAIL, 42L))
                 .thenThrow(new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "El pedido no está disponible."
@@ -177,6 +195,9 @@ class StripeCheckoutServiceTest {
 
         assertEquals(HttpStatus.NOT_FOUND, error.getStatusCode());
         verifyNoInteractions(clientProvider, client);
+        verify(orderPaymentService, never()).attachSession(
+                any(), any(), any(), any()
+        );
     }
 
     private OrderResponse order(

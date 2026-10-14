@@ -12,21 +12,22 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import java.time.Instant;
 
 @Service
 public class StripeCheckoutService {
 
-    private final OrderService orderService;
+    private final OrderPaymentService orderPaymentService;
     private final ObjectProvider<StripeClient> stripeClientProvider;
     private final String frontendUrl;
 
     public StripeCheckoutService(
-            OrderService orderService,
+            OrderPaymentService orderPaymentService,
             ObjectProvider<StripeClient> stripeClientProvider,
             @Value("${app.frontend-url:http://localhost:5173}")
             String frontendUrl) {
 
-        this.orderService = orderService;
+        this.orderPaymentService = orderPaymentService;
         this.stripeClientProvider = stripeClientProvider;
         this.frontendUrl = frontendUrl.replaceAll("/+$", "");
     }
@@ -35,7 +36,8 @@ public class StripeCheckoutService {
             String email,
             Long orderId) {
 
-        OrderResponse order = orderService.getOrder(email, orderId);
+        var payment = orderPaymentService.prepare(email, orderId);
+OrderResponse order = payment.order();
 
         if (order.status() != OrderStatus.PENDING_PAYMENT) {
             throw new ResponseStatusException(
@@ -70,10 +72,8 @@ public class StripeCheckoutService {
         );
 
         RequestOptions options = RequestOptions.builder()
-                .setIdempotencyKey(
-                        "checkout-" + order.id() + "-" + order.createdAt()
-                )
-                .build();
+        .setIdempotencyKey(payment.idempotencyKey())
+        .build();
 
         try {
             var session = stripeClientProvider.getObject()
@@ -89,7 +89,12 @@ public class StripeCheckoutService {
                         "La sesión de pago ya no está disponible."
                 );
             }
-
+orderPaymentService.attachSession(
+        email,
+        orderId,
+        session.getId(),
+        Instant.ofEpochSecond(session.getExpiresAt())
+);
             return new CheckoutSessionResponse(
                     session.getId(),
                     session.getUrl()
