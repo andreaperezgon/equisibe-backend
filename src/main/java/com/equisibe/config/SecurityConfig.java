@@ -20,7 +20,11 @@ public class SecurityConfig {
 
         http
                 .cors(Customizer.withDefaults())
-                .csrf(Customizer.withDefaults())
+                .csrf(csrf -> csrf
+                        .ignoringRequestMatchers(
+                                "/api/payments/stripe/webhook"
+                        )
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 HttpMethod.GET,
@@ -32,7 +36,8 @@ public class SecurityConfig {
                                 HttpMethod.POST,
                                 "/api/auth/register",
                                 "/api/auth/login",
-                                "/api/contacts"
+                                "/api/contacts",
+                                "/api/payments/stripe/webhook"
                         ).permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()
@@ -57,6 +62,7 @@ public class SecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration configuration) throws Exception {
+
         return configuration.getAuthenticationManager();
     }
 
