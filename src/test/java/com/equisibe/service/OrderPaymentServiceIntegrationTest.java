@@ -4,6 +4,7 @@ import com.equisibe.model.ClothingSize;
 import com.equisibe.model.Order;
 import com.equisibe.model.OrderItem;
 import com.equisibe.model.OrderShippingAddress;
+import com.equisibe.model.OrderStatus;
 import com.equisibe.model.User;
 import com.equisibe.repository.OrderPaymentRepository;
 import com.equisibe.repository.OrderRepository;
@@ -28,6 +29,10 @@ import static org.junit.jupiter.api.Assertions.*;
 @ActiveProfiles("test")
 @Transactional
 class OrderPaymentServiceIntegrationTest {
+
+    private static final String SESSION_ID = "cs_test_example";
+    private static final Instant EXPIRES_AT =
+            Instant.parse("2026-10-15T12:00:00Z");
 
     @Autowired
     private OrderPaymentService service;
@@ -100,31 +105,32 @@ class OrderPaymentServiceIntegrationTest {
         assertEquals(orderId, first.order().id());
         assertEquals(first.idempotencyKey(), second.idempotencyKey());
         assertTrue(first.idempotencyKey().startsWith("checkout-"));
-entityManager.clear();
-var reloaded = service.prepare(email, orderId);
+        assertNull(second.sessionId());
 
-assertEquals(second.createdAt(), reloaded.createdAt());        assertNull(second.sessionId());
+        entityManager.clear();
+        var reloaded = service.prepare(email, orderId);
+
+        assertEquals(second.createdAt(), reloaded.createdAt());
     }
 
     @Test
     void persistsSessionAndAcceptsRepeatedAttachment() {
         var prepared = service.prepare(email, orderId);
-        Instant expiresAt = Instant.parse("2026-10-15T12:00:00Z");
 
         service.attachSession(
-                email, orderId, "cs_test_example", expiresAt
+                email, orderId, SESSION_ID, EXPIRES_AT
         );
         entityManager.clear();
 
         service.attachSession(
-                email, orderId, "cs_test_example", expiresAt
+                email, orderId, SESSION_ID, EXPIRES_AT
         );
         entityManager.clear();
 
         var stored = service.prepare(email, orderId);
 
-        assertEquals("cs_test_example", stored.sessionId());
-        assertEquals(expiresAt, stored.sessionExpiresAt());
+        assertEquals(SESSION_ID, stored.sessionId());
+        assertEquals(EXPIRES_AT, stored.sessionExpiresAt());
         assertEquals(prepared.idempotencyKey(), stored.idempotencyKey());
     }
 
@@ -146,10 +152,7 @@ assertEquals(second.createdAt(), reloaded.createdAt());        assertNull(second
         var error = assertThrows(
                 ResponseStatusException.class,
                 () -> service.attachSession(
-                        email,
-                        orderId,
-                        "cs_test_example",
-                        Instant.parse("2026-10-15T12:00:00Z")
+                        email, orderId, SESSION_ID, EXPIRES_AT
                 )
         );
 
@@ -175,5 +178,82 @@ assertEquals(second.createdAt(), reloaded.createdAt());        assertNull(second
         );
 
         assertEquals(HttpStatus.BAD_REQUEST, error.getStatusCode());
+    }
+
+    @Test
+    void confirmsPaymentAndAcceptsRepeatedConfirmation() {
+        prepareSession();
+
+        service.confirmPayment(orderId, SESSION_ID, 4395L, "eur");
+        entityManager.flush();
+        entityManager.clear();
+
+        assertEquals(
+                OrderStatus.PAID,
+                orderRepository.findById(orderId).orElseThrow().getStatus()
+        );
+
+        service.confirmPayment(orderId, SESSION_ID, 4395L, "eur");
+        entityManager.flush();
+        entityManager.clear();
+
+        assertEquals(
+                OrderStatus.PAID,
+                orderRepository.findById(orderId).orElseThrow().getStatus()
+        );
+    }
+
+    @Test
+    void rejectsConfirmationFromAnotherSession() {
+        prepareSession();
+
+        var error = assertThrows(
+                ResponseStatusException.class,
+                () -> service.confirmPayment(
+                        orderId, "cs_test_other", 4395L, "eur"
+                )
+        );
+
+        assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
+        assertPendingPayment();
+    }
+
+    @Test
+    void rejectsConfirmationWithIncorrectAmountOrCurrency() {
+        prepareSession();
+
+        var amountError = assertThrows(
+                ResponseStatusException.class,
+                () -> service.confirmPayment(
+                        orderId, SESSION_ID, 1L, "eur"
+                )
+        );
+
+        var currencyError = assertThrows(
+                ResponseStatusException.class,
+                () -> service.confirmPayment(
+                        orderId, SESSION_ID, 4395L, "usd"
+                )
+        );
+
+        assertEquals(HttpStatus.CONFLICT, amountError.getStatusCode());
+        assertEquals(HttpStatus.CONFLICT, currencyError.getStatusCode());
+        assertPendingPayment();
+    }
+
+    private void prepareSession() {
+        service.prepare(email, orderId);
+        service.attachSession(
+                email, orderId, SESSION_ID, EXPIRES_AT
+        );
+    }
+
+    private void assertPendingPayment() {
+        entityManager.clear();
+
+        assertEquals(
+                OrderStatus.PENDING_PAYMENT,
+                orderRepository.findById(orderId).orElseThrow().getStatus()
+        );
     }
 }

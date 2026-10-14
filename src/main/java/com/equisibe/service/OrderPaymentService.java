@@ -73,6 +73,73 @@ public class OrderPaymentService {
         paymentRepository.saveAndFlush(payment);
     }
 
+    @Transactional
+    public void confirmPayment(
+            Long orderId,
+            String sessionId,
+            Long amountTotal,
+            String currency) {
+
+        if (orderId == null || orderId <= 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "El identificador del pedido no es válido."
+            );
+        }
+
+        Order order = entityManager.find(
+                Order.class,
+                orderId,
+                LockModeType.PESSIMISTIC_WRITE
+        );
+
+        if (order == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "El pedido no está disponible."
+            );
+        }
+
+        OrderPayment payment = paymentRepository
+                .findByOrder_Id(orderId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "El pedido no tiene un pago preparado."
+                ));
+
+        if (sessionId == null
+                || !sessionId.equals(payment.getStripeSessionId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "La sesión de pago no coincide con el pedido."
+            );
+        }
+
+        long expectedAmount = order.getTotal()
+                .movePointRight(2)
+                .longValueExact();
+
+        if (amountTotal == null
+                || amountTotal.longValue() != expectedAmount
+                || !order.getCurrency().equalsIgnoreCase(currency)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "El importe o la moneda no coinciden con el pedido."
+            );
+        }
+
+        switch (order.getStatus()) {
+            case PENDING_PAYMENT -> order.markPaid();
+            case PAID, PREPARING, SHIPPED, DELIVERED -> {
+                // Una confirmación repetida no modifica el estado.
+            }
+            default -> throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "El estado del pedido no permite confirmar el pago."
+            );
+        }
+    }
+
     private Order getOwnedOrderWithLock(String email, Long orderId) {
         if (email == null || email.isBlank()) {
             throw new ResponseStatusException(

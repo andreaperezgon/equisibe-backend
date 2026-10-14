@@ -128,7 +128,19 @@ public class Order {
 
         return normalized;
     }
+public void markPaid() {
+    if (status == OrderStatus.PAID) {
+        return;
+    }
 
+    if (status != OrderStatus.PENDING_PAYMENT) {
+        throw new IllegalStateException(
+                "Solo se puede pagar un pedido pendiente de pago."
+        );
+    }
+
+    status = OrderStatus.PAID;
+}
     public Long getId() {
         return id;
     }
