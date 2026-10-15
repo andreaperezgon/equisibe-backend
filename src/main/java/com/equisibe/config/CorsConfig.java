@@ -18,7 +18,7 @@ public class CorsConfig {
                 List.of("http://localhost:5173")
         );
         configuration.setAllowedMethods(
-                List.of("GET", "POST", "OPTIONS")
+                List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")
         );
         configuration.setAllowedHeaders(
                 List.of("Content-Type", "X-CSRF-TOKEN")
