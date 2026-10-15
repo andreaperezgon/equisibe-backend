@@ -10,6 +10,7 @@ import com.equisibe.model.OrderShippingAddress;
 import com.equisibe.model.User;
 import com.equisibe.repository.OrderRepository;
 import com.equisibe.repository.UserRepository;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -72,6 +73,14 @@ public class OrderService {
         );
 
         return orderRepository.save(order).getId();
+    }
+
+    public List<OrderResponse> listOrders(String email) {
+        User user = getActiveUser(email);
+        return orderRepository.findByUser_IdOrderByCreatedAtDescIdDesc(user.getId())
+                .stream()
+                .map(OrderResponse::from)
+                .toList();
     }
 
     public OrderResponse getOrder(String email, Long orderId) {

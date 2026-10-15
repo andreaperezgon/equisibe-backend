@@ -196,6 +196,62 @@ class OrderIntegrationTest {
         assertEquals(countBefore, orderRepository.count());
     }
 
+    @Test
+    void listsOnlyCurrentCustomersOrdersNewestFirstIncludingPaymentStatus() throws Exception {
+        String first = createOrder(1);
+        Long firstId = Long.valueOf(first.substring(first.lastIndexOf('/') + 1));
+        var paidOrder = orderRepository.findById(firstId).orElseThrow();
+        paidOrder.markPaid();
+        orderRepository.saveAndFlush(paidOrder);
+        String second = createOrder(2);
+        Long secondId = Long.valueOf(second.substring(second.lastIndexOf('/') + 1));
+        User other = saveUser();
+        var otherAddress = addressRepository.saveAndFlush(new ShippingAddress(
+                other, "Otro cliente", "600123456", "Otra calle 1", null,
+                "Madrid", "Madrid", "28001", "ES"));
+        String otherBody = body(1).replace(
+                "\"shippingAddressId\": " + address.getId(),
+                "\"shippingAddressId\": " + otherAddress.getId());
+        mockMvc.perform(post("/api/orders").with(user(other.getEmail())).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content(otherBody))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/orders").with(user(customer.getEmail())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].id").value(secondId))
+                .andExpect(jsonPath("$[0].status").value("PENDING_PAYMENT"))
+                .andExpect(jsonPath("$[0].total").value(80.00))
+                .andExpect(jsonPath("$[0].items[0].productName").value("Camiseta"))
+                .andExpect(jsonPath("$[1].id").value(firstId))
+                .andExpect(jsonPath("$[1].status").value("PAID"));
+    }
+
+    @Test
+    void returnsEmptyHistoryForCustomerWithoutOrders() throws Exception {
+        createOrder(1);
+        User other = saveUser();
+        mockMvc.perform(get("/api/orders").with(user(other.getEmail())))
+                .andExpect(status().isOk())
+                .andExpect(content().json("[]"));
+    }
+
+    @Test
+    void requiresSessionToListOrders() throws Exception {
+        mockMvc.perform(get("/api/orders"))
+                .andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    void cannotUseAUserIdParameterToReadAnotherCustomersOrders() throws Exception {
+        createOrder(1);
+        User other = saveUser();
+        mockMvc.perform(get("/api/orders").param("userId", customer.getId().toString())
+                .with(user(other.getEmail())))
+                .andExpect(status().isOk())
+                .andExpect(content().json("[]"));
+    }
+
     private String createOrder(int quantity) throws Exception {
         var result = mockMvc.perform(request(quantity))
                 .andExpect(status().isCreated())
