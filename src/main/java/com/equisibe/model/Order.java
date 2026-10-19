@@ -141,6 +141,37 @@ public void markPaid() {
 
     status = OrderStatus.PAID;
 }
+    public void advanceFulfillment(OrderStatus next) {
+        Objects.requireNonNull(next, "El estado es obligatorio.");
+
+        if (next != OrderStatus.PREPARING
+                && next != OrderStatus.SHIPPED
+                && next != OrderStatus.DELIVERED) {
+            throw new IllegalArgumentException(
+                    "El estado de preparación no es válido."
+            );
+        }
+
+        if (status == next) {
+            return;
+        }
+
+        boolean allowed = switch (status) {
+            case PAID -> next == OrderStatus.PREPARING;
+            case PREPARING -> next == OrderStatus.SHIPPED;
+            case SHIPPED -> next == OrderStatus.DELIVERED;
+            default -> false;
+        };
+
+        if (!allowed) {
+            throw new IllegalStateException(
+                    "El pedido no puede pasar a ese estado."
+            );
+        }
+
+        status = next;
+    }
+
     public Long getId() {
         return id;
     }

@@ -107,10 +107,12 @@ public class FavoriteService {
                 product.getId(),
                 product.getName(),
                 product.getDescription(),
-                product.getPrice(),
+                product.getEffectivePrice(),
                 product.getImageUrl(),
                 product.getCategory(),
-                product.getStockBySize()
+                product.getStockBySize(),
+                product.getEffectivePrice().compareTo(product.getPrice()) < 0
+                        ? product.getPrice() : null
         );
     }
 }

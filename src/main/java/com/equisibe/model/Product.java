@@ -35,6 +35,10 @@ public class Product {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
+    @Column(precision = 10, scale = 2)
+    private BigDecimal salePrice;
+
+
     @Column(nullable = false, length = 1000)
     private String imageUrl;
 
@@ -117,6 +121,26 @@ public class Product {
         return description;
     }
 
+    public BigDecimal getSalePrice() {
+        return salePrice;
+    }
+
+    public BigDecimal getEffectivePrice() {
+        return salePrice != null && salePrice.compareTo(price) < 0
+                ? salePrice : price;
+    }
+
+    public void updateSalePrice(BigDecimal value) {
+        if (value != null && (
+                value.signum() <= 0
+                || value.compareTo(price) >= 0)) {
+            throw new IllegalArgumentException(
+                    "La rebaja debe ser mayor que cero y menor que el precio habitual."
+            );
+        }
+        salePrice = value == null ? null : value.setScale(2);
+    }
+
     public BigDecimal getPrice() {
         return price;
     }
@@ -127,6 +151,26 @@ public class Product {
 
     public String getCategory() {
         return category;
+    }
+
+    public void updateDetails(
+            String name,
+            String description,
+            BigDecimal price,
+            String imageUrl,
+            String category) {
+        this.name = Objects.requireNonNull(name).trim();
+        this.description = Objects.requireNonNull(description).trim();
+        this.price = Objects.requireNonNull(price);
+        if (salePrice != null && salePrice.compareTo(price) >= 0) {
+            salePrice = null;
+        }
+        this.imageUrl = Objects.requireNonNull(imageUrl).trim();
+        this.category = Objects.requireNonNull(category).trim();
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
     }
 
     public boolean isActive() {

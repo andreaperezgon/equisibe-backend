@@ -29,8 +29,11 @@ public class SecurityConfig {
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/api/auth/csrf",
+                                "/api/shop/status",
+                                "/api/popups/active",
                                 "/api/products",
-                                "/api/products/*"
+                                "/api/products/*",
+                                "/api/product-images/*"
                         ).permitAll()
                         .requestMatchers(
                                 HttpMethod.POST,
@@ -40,6 +43,7 @@ public class SecurityConfig {
                                 "/api/payments/stripe/webhook"
                         ).permitAll()
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .logout(logout -> logout

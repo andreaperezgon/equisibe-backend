@@ -17,13 +17,16 @@ public class CheckoutService {
 
     private final ShippingAddressService shippingAddressService;
     private final CartValidationService cartValidationService;
+    private final PromotionalDiscountService discounts;
 
     public CheckoutService(
             ShippingAddressService shippingAddressService,
-            CartValidationService cartValidationService) {
+            CartValidationService cartValidationService,
+            PromotionalDiscountService discounts) {
 
         this.shippingAddressService = shippingAddressService;
         this.cartValidationService = cartValidationService;
+        this.discounts = discounts;
     }
 
     public CheckoutResponse validate(
@@ -49,6 +52,7 @@ public class CheckoutService {
         CartValidationResponse cart =
                 cartValidationService.validate(cartRequest);
 
+        cart = discounts.apply(cart, request.promoCode());
         return new CheckoutResponse(address, cart);
     }
 }

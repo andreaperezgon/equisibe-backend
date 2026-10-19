@@ -97,7 +97,7 @@ public class CartValidationService {
                 continue;
             }
 
-            var lineTotal = product.getPrice()
+            var lineTotal = product.getEffectivePrice()
                     .multiply(BigDecimal.valueOf(quantity));
 
             subtotal = subtotal.add(lineTotal);
@@ -107,7 +107,7 @@ public class CartValidationService {
                     product.getName(),
                     key.size(),
                     quantity,
-                    product.getPrice(),
+                    product.getEffectivePrice(),
                     lineTotal
             ));
         }

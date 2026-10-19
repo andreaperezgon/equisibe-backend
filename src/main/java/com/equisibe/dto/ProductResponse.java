@@ -11,6 +11,18 @@ public record ProductResponse(
         BigDecimal price,
         String imageUrl,
         String category,
-        Map<ClothingSize, Integer> stockBySize
+        Map<ClothingSize, Integer> stockBySize,
+        BigDecimal originalPrice
 ) {
+    public ProductResponse(
+            Long id,
+            String name,
+            String description,
+            BigDecimal price,
+            String imageUrl,
+            String category,
+            Map<ClothingSize, Integer> stockBySize) {
+        this(id, name, description, price, imageUrl,
+                category, stockBySize, null);
+    }
 }

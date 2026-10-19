@@ -21,7 +21,12 @@ public record CheckoutRequest(
                 max = 100,
                 message = "La cesta debe contener entre 1 y 100 líneas."
         )
-        List<@NotNull @Valid Item> items
+        List<@NotNull @Valid Item> items,
+
+        @Size(max = 40) String promoCode
 
 ) {
+    public CheckoutRequest(Long shippingAddressId, List<Item> items) {
+        this(shippingAddressId, items, null);
+    }
 }
