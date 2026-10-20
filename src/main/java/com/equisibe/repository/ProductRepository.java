@@ -10,4 +10,11 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findByActiveTrueOrderByIdDesc();
 
     Optional<Product> findByIdAndActiveTrue(Long id);
+
+    @org.springframework.data.jpa.repository.Lock(
+            jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query(
+            "select p from Product p where p.id = :id")
+    Optional<Product> findLockedById(
+            @org.springframework.data.repository.query.Param("id") Long id);
 }

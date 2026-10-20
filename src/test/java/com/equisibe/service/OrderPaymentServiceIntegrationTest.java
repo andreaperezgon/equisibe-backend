@@ -49,6 +49,10 @@ class OrderPaymentServiceIntegrationTest {
     @Autowired
     private EntityManager entityManager;
 
+
+    @Autowired
+    private com.equisibe.repository.ProductRepository productRepository;
+
     private String email;
     private Long orderId;
 
@@ -73,8 +77,15 @@ class OrderPaymentServiceIntegrationTest {
                 "ES"
         );
 
+
+        var product = new com.equisibe.model.Product(
+                "Camiseta", "Prenda de prueba", new BigDecimal("40.00"),
+                "/images/products/CAMISETA.jpeg", "Camisetas");
+        product.updateStock(ClothingSize.S, 5);
+        productRepository.saveAndFlush(product);
+
         var item = new OrderItem(
-                1L,
+                product.getId(),
                 "Camiseta",
                 ClothingSize.S,
                 1L,

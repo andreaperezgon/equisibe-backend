@@ -67,7 +67,7 @@ public class AdminProductService {
             Long productId,
             AdminProductRequest request) {
         requireAdmin(email);
-        Product product = findProduct(productId);
+        Product product = findProductForUpdate(productId);
 
         product.updateDetails(
                 request.name(),
@@ -88,7 +88,7 @@ public class AdminProductService {
             Long productId,
             boolean active) {
         requireAdmin(email);
-        Product product = findProduct(productId);
+        Product product = findProductForUpdate(productId);
         product.setActive(active);
 
         return AdminProductResponse.from(
@@ -103,7 +103,7 @@ public class AdminProductService {
             Long productId,
             com.equisibe.dto.AdminStockRequest request) {
         requireAdmin(email);
-        Product product = findProduct(productId);
+        Product product = findProductForUpdate(productId);
         var currentSizes = product.getStockBySize().keySet();
         var requestedSizes = request.stockBySize().keySet();
 
@@ -127,7 +127,7 @@ public class AdminProductService {
             Long productId,
             com.equisibe.dto.AdminSaleRequest request) {
         requireAdmin(email);
-        Product product = findProduct(productId);
+        Product product = findProductForUpdate(productId);
         try {
             product.updateSalePrice(request.salePrice());
         } catch (IllegalArgumentException failure) {
@@ -139,6 +139,16 @@ public class AdminProductService {
         return AdminProductResponse.from(
                 productRepository.saveAndFlush(product)
         );
+    }
+
+
+    private Product findProductForUpdate(Long productId) {
+        if (productId == null || productId <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+        }
+        return productRepository.findLockedById(productId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "El producto no existe."));
     }
 
     private Product findProduct(Long productId) {

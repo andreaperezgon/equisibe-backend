@@ -141,6 +141,15 @@ public void markPaid() {
 
     status = OrderStatus.PAID;
 }
+
+    public void markExpired() {
+        if (status == OrderStatus.EXPIRED) return;
+        if (status != OrderStatus.PENDING_PAYMENT) {
+            throw new IllegalStateException("Solo puede caducar un pedido pendiente.");
+        }
+        status = OrderStatus.EXPIRED;
+    }
+
     public void advanceFulfillment(OrderStatus next) {
         Objects.requireNonNull(next, "El estado es obligatorio.");
 
