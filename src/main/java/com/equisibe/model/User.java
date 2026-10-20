@@ -33,6 +33,14 @@ public class User {
     @Column(nullable = false)
     private boolean enabled = true;
 
+
+    @Column(nullable = false, columnDefinition = "bigint default 0")
+    private long credentialVersion = 0;
+
+    public long getCredentialVersion() {
+        return credentialVersion;
+    }
+
     protected User() {
     }
 
@@ -64,5 +72,13 @@ public class User {
 
     public boolean isEnabled() {
         return enabled;
+    }
+
+    public void changePassword(String encodedPassword) {
+        if (encodedPassword == null || encodedPassword.isBlank()) {
+            throw new IllegalArgumentException("La contraseña no puede estar vacía.");
+        }
+        this.password = encodedPassword;
+        this.credentialVersion++;
     }
 }

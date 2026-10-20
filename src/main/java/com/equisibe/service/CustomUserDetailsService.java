@@ -25,10 +25,6 @@ public class CustomUserDetailsService implements UserDetailsService {
                         "Credenciales incorrectas."
                 ));
 
-        return User.withUsername(user.getEmail())
-                .password(user.getPassword())
-                .roles(user.getRole().name())
-                .disabled(!user.isEnabled())
-                .build();
+        return new com.equisibe.security.AccountUserDetails(user);
     }
 }

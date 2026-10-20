@@ -15,11 +15,14 @@ import org.springframework.security.web.context.SecurityContextRepository;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http)
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, com.equisibe.repository.UserRepository users)
             throws Exception {
 
         http
                 .cors(Customizer.withDefaults())
+                .addFilterBefore(
+                        new com.equisibe.security.CredentialVersionFilter(users),
+                        org.springframework.security.web.access.intercept.AuthorizationFilter.class)
                 .csrf(csrf -> csrf
                         .ignoringRequestMatchers(
                                 "/api/payments/stripe/webhook"
@@ -39,6 +42,8 @@ public class SecurityConfig {
                                 HttpMethod.POST,
                                 "/api/auth/register",
                                 "/api/auth/login",
+                                "/api/auth/forgot-password",
+                                "/api/auth/reset-password",
                                 "/api/contacts",
                                 "/api/payments/stripe/webhook"
                         ).permitAll()

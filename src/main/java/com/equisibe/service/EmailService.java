@@ -56,6 +56,34 @@ public class EmailService {
         }
     }
 
+
+    public void requireAvailable() {
+        if (!enabled || from.isBlank()) {
+            throw unavailable();
+        }
+    }
+
+    public void sendPasswordReset(String email, String link) {
+        requireAvailable();
+
+        SimpleMailMessage mail = new SimpleMailMessage();
+        mail.setFrom(from);
+        mail.setTo(email);
+        mail.setSubject("Recupera tu contraseña de Equisibé");
+        mail.setText(
+                "Has solicitado cambiar tu contraseña de Equisibé."
+                + "\n\nAbre este enlace para elegir una nueva contraseña:"
+                + "\n" + link
+                + "\n\nEl enlace caduca en 30 minutos y solo puede utilizarse una vez."
+                + "\nSi no lo has solicitado, puedes ignorar este correo.");
+
+        try {
+            sender.send(mail);
+        } catch (MailException exception) {
+            throw unavailable();
+        }
+    }
+
     private ResponseStatusException unavailable() {
         return new ResponseStatusException(
                 HttpStatus.SERVICE_UNAVAILABLE,
