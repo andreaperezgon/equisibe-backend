@@ -41,6 +41,24 @@ public class User {
         return credentialVersion;
     }
 
+
+    @Column(name = "google_subject", unique = true, length = 255)
+    private String googleSubject;
+
+    public String getGoogleSubject() {
+        return googleSubject;
+    }
+
+    public void linkGoogleSubject(String subject) {
+        if (subject == null || subject.isBlank() || subject.length() > 255) {
+            throw new IllegalArgumentException("La identidad de Google no es válida.");
+        }
+        if (googleSubject != null && !googleSubject.equals(subject)) {
+            throw new IllegalStateException("La cuenta ya está vinculada a otra identidad de Google.");
+        }
+        googleSubject = subject;
+    }
+
     protected User() {
     }
 
