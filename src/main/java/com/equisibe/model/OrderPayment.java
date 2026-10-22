@@ -89,6 +89,14 @@ public class OrderPayment {
         stockReservationStatus = StockReservationStatus.RELEASED;
     }
 
+
+    @Column(name = "last_reconciled_at")
+    private Instant lastReconciledAt;
+
+    public void markReconciled() {
+        lastReconciledAt = Instant.now();
+    }
+
     protected OrderPayment() {
     }
 

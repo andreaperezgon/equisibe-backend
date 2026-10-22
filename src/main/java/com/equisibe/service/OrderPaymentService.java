@@ -185,6 +185,18 @@ public class OrderPaymentService {
         entityManager.flush();
     }
 
+
+    @Transactional
+    public void markStockReconciled(Long paymentId) {
+        var payment = paymentRepository.findById(paymentId).orElse(null);
+        if (payment == null) return;
+
+        entityManager.lock(payment.getOrder(), LockModeType.PESSIMISTIC_WRITE);
+        entityManager.refresh(payment, LockModeType.PESSIMISTIC_WRITE);
+        payment.markReconciled();
+        entityManager.flush();
+    }
+
     private Order getOwnedOrderWithLock(String email, Long orderId) {
         if (email == null || email.isBlank()) {
             throw new ResponseStatusException(
