@@ -114,7 +114,7 @@ public class AdminProductService {
             );
         }
 
-        request.stockBySize().forEach(product::updateStock);
+        request.stockBySize().forEach((size, quantity) -> product.updateStock(size, quantity));
         return AdminProductResponse.from(
                 productRepository.saveAndFlush(product)
         );

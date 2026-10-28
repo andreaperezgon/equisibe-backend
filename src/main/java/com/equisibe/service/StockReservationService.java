@@ -56,7 +56,7 @@ public class StockReservationService {
 
         for (var productEntry : quantities.entrySet()) {
             Product product = locked.get(productEntry.getKey());
-            productEntry.getValue().forEach(product::takeStock);
+            productEntry.getValue().forEach((size, quantity) -> product.takeStock(size, quantity));
         }
         payment.markStockReserved();
         entityManager.flush();
@@ -89,7 +89,7 @@ public class StockReservationService {
 
         for (var productEntry : quantities.entrySet()) {
             Product product = locked.get(productEntry.getKey());
-            productEntry.getValue().forEach(product::restoreStock);
+            productEntry.getValue().forEach((size, quantity) -> product.restoreStock(size, quantity));
         }
         payment.markStockReleased();
         entityManager.flush();
@@ -104,7 +104,7 @@ public class StockReservationService {
             }
             var sizes = result.computeIfAbsent(
                     item.getProductId(), ignored -> new EnumMap<>(ClothingSize.class));
-            sizes.merge(item.getSize(), Math.toIntExact(item.getQuantity()), Math::addExact);
+            sizes.merge(item.getSize(), Math.toIntExact(item.getQuantity()), (previous, quantity) -> Math.addExact(previous, quantity));
         }
         return result;
     }

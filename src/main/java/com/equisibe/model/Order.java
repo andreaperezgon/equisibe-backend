@@ -98,8 +98,8 @@ public class Order {
         this.items = new ArrayList<>(List.copyOf(items));
         this.subtotal = validateAmount(
                 this.items.stream()
-                        .map(OrderItem::getLineTotal)
-                        .reduce(new BigDecimal("0.00"), BigDecimal::add)
+                        .map(item -> item.getLineTotal())
+                        .reduce(new BigDecimal("0.00"), (subtotal, lineTotal) -> subtotal.add(lineTotal))
         );
         this.shippingCost = validateAmount(shippingCost);
         this.total = validateAmount(this.subtotal.add(this.shippingCost));

@@ -79,7 +79,7 @@ public class ReturnRequestService {
             if (previous.getStatus() == ReturnStatus.REJECTED) continue;
             for (var item : previous.getItems()) {
                 previouslyRequested.merge(
-                        item.getLineIndex(), item.getQuantity(), Long::sum
+                        item.getLineIndex(), item.getQuantity(), (requestedQuantity, quantity) -> requestedQuantity + quantity
                 );
             }
         }

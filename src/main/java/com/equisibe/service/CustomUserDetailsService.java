@@ -2,7 +2,6 @@ package com.equisibe.service;
 
 import com.equisibe.repository.UserRepository;
 import java.util.Locale;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;

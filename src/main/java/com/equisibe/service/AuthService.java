@@ -40,7 +40,7 @@ public class AuthService {
 
     public UserResponse getCurrentUser(String email) {
         User user = userRepository.findByEmail(email)
-                .filter(User::isEnabled)
+                .filter(account -> account.isEnabled())
                 .orElseThrow(() ->
                         new BadCredentialsException("Sesión no válida."));
 
