@@ -200,6 +200,57 @@ class StripeCheckoutServiceTest {
         );
     }
 
+    private void preparedOrder(OrderStatus status) {
+        when(orderPaymentService.prepare(EMAIL, 42L))
+                .thenReturn(new OrderPaymentService.PreparedPayment(
+                        order(status, 1, "3.95"), IDEMPOTENCY_KEY, null, null, Instant.now()));
+    }
+
+    @Test
+    void rejectsNonPendingPreparedSnapshotWithoutContactingStripe() {
+        preparedOrder(OrderStatus.PAID);
+        var error = assertThrows(ResponseStatusException.class, () -> service.createSession(EMAIL, 42L));
+        assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
+        verifyNoInteractions(clientProvider);
+    }
+
+    @Test
+    void rejectsClosedStripeSessionWithoutAssociatingIt() throws Exception {
+        preparedOrder(OrderStatus.PENDING_PAYMENT);
+        when(clientProvider.getObject()).thenReturn(client);
+        Session session = mock(Session.class);
+        when(session.getStatus()).thenReturn("expired");
+        when(client.v1().checkout().sessions().create(
+                any(SessionCreateParams.class), any(RequestOptions.class))).thenReturn(session);
+        var error = assertThrows(ResponseStatusException.class, () -> service.createSession(EMAIL, 42L));
+        assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
+        verify(orderPaymentService, never()).attachSession(any(), any(), any(), any());
+    }
+
+    @Test
+    void rejectsOpenSessionWithoutCheckoutUrl() throws Exception {
+        preparedOrder(OrderStatus.PENDING_PAYMENT);
+        when(clientProvider.getObject()).thenReturn(client);
+        Session session = mock(Session.class);
+        when(session.getStatus()).thenReturn("open");
+        when(client.v1().checkout().sessions().create(
+                any(SessionCreateParams.class), any(RequestOptions.class))).thenReturn(session);
+        var error = assertThrows(ResponseStatusException.class, () -> service.createSession(EMAIL, 42L));
+        assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
+        verify(orderPaymentService, never()).attachSession(any(), any(), any(), any());
+    }
+
+    @Test
+    void reportsStripeFailureWithoutAssociatingSession() throws Exception {
+        preparedOrder(OrderStatus.PENDING_PAYMENT);
+        when(clientProvider.getObject()).thenReturn(client);
+        when(client.v1().checkout().sessions().create(
+                any(SessionCreateParams.class), any(RequestOptions.class)))
+                .thenThrow(mock(com.stripe.exception.StripeException.class));
+        var error = assertThrows(ResponseStatusException.class, () -> service.createSession(EMAIL, 42L));
+        assertEquals(HttpStatus.BAD_GATEWAY, error.getStatusCode());
+        verify(orderPaymentService, never()).attachSession(any(), any(), any(), any());
+    }
     private OrderResponse order(
             OrderStatus status,
             long quantity,

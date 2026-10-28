@@ -4,6 +4,8 @@ import com.equisibe.dto.CartValidationResponse;
 import com.equisibe.model.ClothingSize;
 import com.equisibe.model.PromotionalCode;
 import com.equisibe.repository.PromotionalCodeRepository;
+import com.equisibe.repository.PromotionalPopupRepository;
+import org.junit.jupiter.api.BeforeEach;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -14,12 +16,41 @@ import static org.mockito.Mockito.*;
 class PromotionalDiscountServiceTest {
     private final PromotionalCodeRepository repository =
             mock(PromotionalCodeRepository.class);
+    private final PromotionalPopupRepository popups = mock(PromotionalPopupRepository.class);
     private final PromotionalDiscountService service =
             new PromotionalDiscountService(
-                    new PromotionalCodeService(repository),
+                    new PromotionalCodeService(repository, popups),
                     new ShippingCostService()
             );
 
+    @BeforeEach
+    void activePromotions() {
+        when(popups.existsByPromoCodeAndActiveTrue("EQUISIBE10")).thenReturn(true);
+        when(popups.existsByPromoCodeAndActiveTrue("EQUISIBE20")).thenReturn(true);
+    }
+
+    @Test
+    void rejectsDiscountWhenItsPopupIsInactiveOrMissing() {
+        when(repository.findById("EQUISIBE10"))
+                .thenReturn(Optional.of(new PromotionalCode("EQUISIBE10", 10)));
+        when(popups.existsByPromoCodeAndActiveTrue("EQUISIBE10")).thenReturn(false);
+        var error = assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> service.apply(cart("54.90", 1), " equisibe10 "));
+        assertEquals(400, error.getStatusCode().value());
+        verify(popups).existsByPromoCodeAndActiveTrue("EQUISIBE10");
+    }
+
+    @Test
+    void activationIsRecheckedEveryTimeCodeIsApplied() {
+        when(repository.findById("EQUISIBE10"))
+                .thenReturn(Optional.of(new PromotionalCode("EQUISIBE10", 10)));
+        assertEquals("EQUISIBE10", service.apply(cart("54.90", 1), "EQUISIBE10").promoCode());
+        when(popups.existsByPromoCodeAndActiveTrue("EQUISIBE10")).thenReturn(false);
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> service.apply(cart("54.90", 1), "EQUISIBE10"));
+        when(popups.existsByPromoCodeAndActiveTrue("EQUISIBE10")).thenReturn(true);
+        assertEquals("EQUISIBE10", service.apply(cart("54.90", 1), "EQUISIBE10").promoCode());
+    }
     private CartValidationResponse cart(String price, int quantity) {
         var unit = new BigDecimal(price);
         var subtotal = unit.multiply(BigDecimal.valueOf(quantity));
