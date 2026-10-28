@@ -7,37 +7,40 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ContactServiceTest {
 
-    @Mock
-    private ContactRepository contactRepository;
-
-    @InjectMocks
-    private ContactService contactService;
+    @Mock ContactRepository contactRepository;
+    @Mock EmailService emailService;
+    @InjectMocks ContactService contactService;
 
     @Test
-    void shouldSaveContact() {
-
+    void shouldSaveAndSendContact() {
         Contact contact = new Contact(
-                "Andrea",
-                "andrea@email.com",
-                "Quiero información"
-        );
+                "Andrea", "andrea@example.com", "Quiero información");
+        when(contactRepository.saveAndFlush(contact)).thenReturn(contact);
 
-        when(contactRepository.save(contact)).thenReturn(contact);
+        assertSame(contact, contactService.saveContact(contact));
 
-        Contact savedContact = contactService.saveContact(contact);
+        verify(contactRepository).saveAndFlush(contact);
+        verify(emailService).sendContact(contact);
+    }
 
-        assertEquals("Andrea", savedContact.getName());
-        assertEquals("andrea@email.com", savedContact.getEmail());
-        assertEquals("Quiero información", savedContact.getMessage());
+    @Test
+    void shouldReportEmailFailure() {
+        Contact contact = new Contact(
+                "Andrea", "andrea@example.com", "Consulta");
+        when(contactRepository.saveAndFlush(contact)).thenReturn(contact);
+        doThrow(new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE))
+                .when(emailService).sendContact(contact);
 
-        verify(contactRepository).save(contact);
+        assertThrows(ResponseStatusException.class,
+                () -> contactService.saveContact(contact));
     }
 }

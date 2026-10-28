@@ -10,6 +10,8 @@ public interface PromotionalPopupRepository
 
     boolean existsByPromoCode(String promoCode);
 
+    boolean existsByPromoCodeAndActiveTrue(String promoCode);
+
     List<PromotionalPopup> findAllByOrderByUpdatedAtDescIdDesc();
 
     Optional<PromotionalPopup> findFirstByActiveTrueOrderByUpdatedAtDescIdDesc();

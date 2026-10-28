@@ -2,7 +2,6 @@ package com.equisibe.service;
 
 import com.equisibe.repository.UserRepository;
 import java.util.Locale;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -25,10 +24,6 @@ public class CustomUserDetailsService implements UserDetailsService {
                         "Credenciales incorrectas."
                 ));
 
-        return User.withUsername(user.getEmail())
-                .password(user.getPassword())
-                .roles(user.getRole().name())
-                .disabled(!user.isEnabled())
-                .build();
+        return new com.equisibe.security.AccountUserDetails(user);
     }
 }

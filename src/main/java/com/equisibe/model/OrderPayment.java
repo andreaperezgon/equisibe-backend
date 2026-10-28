@@ -52,6 +52,51 @@ public class OrderPayment {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+
+    @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+    @Column(
+            name = "stock_reservation_status",
+            nullable = false,
+            columnDefinition = "varchar(20) default 'NONE'"
+    )
+    private StockReservationStatus stockReservationStatus = StockReservationStatus.NONE;
+
+    public StockReservationStatus getStockReservationStatus() {
+        return stockReservationStatus;
+    }
+
+    public void markStockReserved() {
+        if (stockReservationStatus == StockReservationStatus.RESERVED) return;
+        if (stockReservationStatus != StockReservationStatus.NONE) {
+            throw new IllegalStateException("Esta reserva no puede iniciarse de nuevo.");
+        }
+        stockReservationStatus = StockReservationStatus.RESERVED;
+    }
+
+    public void markStockConsumed() {
+        if (stockReservationStatus == StockReservationStatus.CONSUMED) return;
+        if (stockReservationStatus != StockReservationStatus.RESERVED) {
+            throw new IllegalStateException("No existe una reserva activa.");
+        }
+        stockReservationStatus = StockReservationStatus.CONSUMED;
+    }
+
+    public void markStockReleased() {
+        if (stockReservationStatus == StockReservationStatus.RELEASED) return;
+        if (stockReservationStatus != StockReservationStatus.RESERVED) {
+            throw new IllegalStateException("No existe una reserva que liberar.");
+        }
+        stockReservationStatus = StockReservationStatus.RELEASED;
+    }
+
+
+    @Column(name = "last_reconciled_at")
+    private Instant lastReconciledAt;
+
+    public void markReconciled() {
+        lastReconciledAt = Instant.now();
+    }
+
     protected OrderPayment() {
     }
 

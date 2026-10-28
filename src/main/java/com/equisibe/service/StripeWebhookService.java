@@ -33,7 +33,8 @@ public class StripeWebhookService {
             );
         }
 
-        if (!"checkout.session.completed".equals(event.getType())
+        if (!"checkout.session.expired".equals(event.getType())
+                && !"checkout.session.completed".equals(event.getType())
                 && !"checkout.session.async_payment_succeeded"
                         .equals(event.getType())) {
             return;
@@ -51,6 +52,19 @@ public class StripeWebhookService {
                     HttpStatus.BAD_REQUEST,
                     "El evento no contiene una sesión de Checkout."
             );
+        }
+
+
+        if ("checkout.session.expired".equals(event.getType())) {
+            if ("payment".equals(session.getMode())
+                    && "expired".equals(session.getStatus())
+                    && session.getExpiresAt() != null) {
+                orderPaymentService.expirePayment(
+                        getOrderId(session),
+                        session.getId(),
+                        java.time.Instant.ofEpochSecond(session.getExpiresAt()));
+            }
+            return;
         }
 
         if (!"payment".equals(session.getMode())

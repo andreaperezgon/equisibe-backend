@@ -59,6 +59,12 @@ public class Product {
     private Map<ClothingSize, Integer> stockBySize =
             new EnumMap<>(ClothingSize.class);
 
+
+    @jakarta.persistence.Version
+    @Column(name = "stock_version", nullable = false,
+            columnDefinition = "bigint default 0")
+    private long stockVersion;
+
     protected Product() {
     }
 
@@ -85,6 +91,27 @@ public class Product {
         }
 
         stockBySize.put(size, quantity);
+    }
+
+
+    public void takeStock(ClothingSize size, int quantity) {
+        Objects.requireNonNull(size, "La talla es obligatoria.");
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("La cantidad debe ser positiva.");
+        }
+        int available = getStock(size);
+        if (quantity > available) {
+            throw new IllegalStateException("No quedan suficientes unidades de esta talla.");
+        }
+        stockBySize.put(size, available - quantity);
+    }
+
+    public void restoreStock(ClothingSize size, int quantity) {
+        Objects.requireNonNull(size, "La talla es obligatoria.");
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("La cantidad debe ser positiva.");
+        }
+        stockBySize.put(size, Math.addExact(getStock(size), quantity));
     }
 
     public int getStock(ClothingSize size) {

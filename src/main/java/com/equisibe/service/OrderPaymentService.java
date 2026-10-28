@@ -18,13 +18,16 @@ public class OrderPaymentService {
 
     private final OrderPaymentRepository paymentRepository;
     private final EntityManager entityManager;
+    private final StockReservationService stockReservations;
 
     public OrderPaymentService(
             OrderPaymentRepository paymentRepository,
-            EntityManager entityManager) {
+            EntityManager entityManager,
+            StockReservationService stockReservations) {
 
         this.paymentRepository = paymentRepository;
         this.entityManager = entityManager;
+        this.stockReservations = stockReservations;
     }
 
     @Transactional
@@ -43,6 +46,8 @@ public class OrderPaymentService {
                 .orElseGet(() -> paymentRepository.saveAndFlush(
                         new OrderPayment(order)
                 ));
+
+        stockReservations.reserve(payment);
 
         return new PreparedPayment(
                 OrderResponse.from(order),
@@ -129,7 +134,14 @@ public class OrderPaymentService {
         }
 
         switch (order.getStatus()) {
-            case PENDING_PAYMENT -> order.markPaid();
+            case PENDING_PAYMENT -> {
+                if (payment.getStockReservationStatus()
+                        == com.equisibe.model.StockReservationStatus.NONE) {
+                    stockReservations.reserve(payment);
+                }
+                stockReservations.consume(payment);
+                order.markPaid();
+            }
             case PAID, PREPARING, SHIPPED, DELIVERED -> {
                 // Una confirmación repetida no modifica el estado.
             }
@@ -138,6 +150,51 @@ public class OrderPaymentService {
                     "El estado del pedido no permite confirmar el pago."
             );
         }
+    }
+
+
+    @Transactional
+    public void expirePayment(Long orderId, String sessionId, Instant expiresAt) {
+        if (orderId == null || orderId <= 0 || sessionId == null || expiresAt == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+        }
+
+        Order order = entityManager.find(
+                Order.class, orderId, LockModeType.PESSIMISTIC_WRITE);
+        if (order == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+
+        OrderPayment payment = paymentRepository.findByOrder_Id(orderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT));
+
+        if (payment.getStripeSessionId() == null) {
+            payment.attachSession(sessionId, expiresAt);
+        }
+
+        if (!sessionId.equals(payment.getStripeSessionId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "La sesión no coincide con el pedido.");
+        }
+
+        if (order.getStatus() == OrderStatus.EXPIRED) return;
+        if (order.getStatus() != OrderStatus.PENDING_PAYMENT) return;
+
+        stockReservations.release(payment);
+        order.markExpired();
+        entityManager.flush();
+    }
+
+
+    @Transactional
+    public void markStockReconciled(Long paymentId) {
+        var payment = paymentRepository.findById(paymentId).orElse(null);
+        if (payment == null) return;
+
+        entityManager.lock(payment.getOrder(), LockModeType.PESSIMISTIC_WRITE);
+        entityManager.refresh(payment, LockModeType.PESSIMISTIC_WRITE);
+        payment.markReconciled();
+        entityManager.flush();
     }
 
     private Order getOwnedOrderWithLock(String email, Long orderId) {

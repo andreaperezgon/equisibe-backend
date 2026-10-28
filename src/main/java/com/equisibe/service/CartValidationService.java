@@ -41,7 +41,7 @@ public class CartValidationService {
             quantities.merge(
                     key,
                     item.quantity().longValue(),
-                    Long::sum
+                    (previous, quantity) -> previous + quantity
             );
         }
 

@@ -98,8 +98,8 @@ public class Order {
         this.items = new ArrayList<>(List.copyOf(items));
         this.subtotal = validateAmount(
                 this.items.stream()
-                        .map(OrderItem::getLineTotal)
-                        .reduce(new BigDecimal("0.00"), BigDecimal::add)
+                        .map(item -> item.getLineTotal())
+                        .reduce(new BigDecimal("0.00"), (subtotal, lineTotal) -> subtotal.add(lineTotal))
         );
         this.shippingCost = validateAmount(shippingCost);
         this.total = validateAmount(this.subtotal.add(this.shippingCost));
@@ -141,6 +141,15 @@ public void markPaid() {
 
     status = OrderStatus.PAID;
 }
+
+    public void markExpired() {
+        if (status == OrderStatus.EXPIRED) return;
+        if (status != OrderStatus.PENDING_PAYMENT) {
+            throw new IllegalStateException("Solo puede caducar un pedido pendiente.");
+        }
+        status = OrderStatus.EXPIRED;
+    }
+
     public void advanceFulfillment(OrderStatus next) {
         Objects.requireNonNull(next, "El estado es obligatorio.");
 

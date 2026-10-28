@@ -20,7 +20,7 @@ public class PromotionalDiscountService {
 
     public CartValidationResponse apply(
             CartValidationResponse cart, String value) {
-        int percentage = codes.getPercentage(value);
+        int percentage = codes.getAvailablePercentage(value);
         if (percentage == 0 || !cart.valid()) return cart;
 
         String code = value.trim().toUpperCase(Locale.ROOT);
@@ -39,8 +39,8 @@ public class PromotionalDiscountService {
         }).toList();
 
         BigDecimal subtotal = items.stream()
-                .map(CartValidationResponse.Item::lineTotal)
-                .reduce(new BigDecimal("0.00"), BigDecimal::add);
+                .map(item -> item.lineTotal())
+                .reduce(new BigDecimal("0.00"), (runningTotal, lineTotal) -> runningTotal.add(lineTotal));
         BigDecimal shippingCost = shipping.calculate(subtotal);
 
         return new CartValidationResponse(

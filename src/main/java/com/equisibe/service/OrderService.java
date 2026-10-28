@@ -112,7 +112,7 @@ public class OrderService {
         }
 
         return userRepository.findByEmail(email)
-                .filter(User::isEnabled)
+                .filter(account -> account.isEnabled())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.UNAUTHORIZED,
                         "La sesión no es válida."
